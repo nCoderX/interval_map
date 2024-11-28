@@ -1,0 +1,81 @@
+#pragma once
+
+#include <map>
+#include <concepts>
+
+template<typename T>
+concept IntevalMapKeyType = std::convertible_to<decltype(std::declval<T>() < std::declval<T>()), bool> && std::copyable<T >&& std::movable<T>;
+
+template<typename T>
+concept IntevalMapValueType = std::convertible_to<decltype(std::declval<T>() == std::declval<T>()), bool> && std::copyable<T> && std::movable<T>;
+
+template<IntevalMapKeyType K, IntevalMapValueType V>
+class interval_map {
+	using interval_map_t = std::map<K, V>;
+    V _valBegin;
+	interval_map_t _intervalsMap;
+	
+public:
+	interval_map(interval_map const& other) = default;
+	interval_map(interval_map&& other) noexcept
+		: _valBegin(std::move(other._valBegin)), _intervalsMap(std::move(other._intervalsMap)) {
+	}
+	interval_map(V&& val) noexcept
+		: _valBegin(std::forward<V>(val)) {
+	}
+	interval_map& operator=(interval_map const& other) = default;
+	interval_map& operator=(interval_map&& other) noexcept {
+		_valBegin = std::move(other._valBegin);
+		_intervalsMap = std::move(other._intervalsMap);
+		return *this;
+	}
+
+	[[nodiscard]] typename interval_map_t::iterator begin() const noexcept {
+		return _intervalsMap.begin();
+	}
+	[[nodiscard]] typename interval_map_t::iterator end() const noexcept {
+		return _intervalsMap.end();
+	}
+	[[nodiscard]] const interval_map_t& intervals() const noexcept {
+		return _intervalsMap;
+	}
+	[[nodiscard]] const V& valBegin() const noexcept {
+		return _valBegin;
+	}
+	void swap(interval_map& other) noexcept {
+		std::swap(_valBegin, other._valBegin);
+		_intervalsMap.swap(other._intervalsMap);
+	}
+    void assign(K const& keyBegin, K const& keyEnd, V&& val) noexcept {
+        auto itValue = [this](const auto& it) -> const V& { return it == std::end(_intervalsMap) ? _valBegin : it->second; };
+		auto previousValue = [this](const auto& it) -> const V& { return it == std::begin(_intervalsMap) ? _valBegin : std::prev(it)->second; };
+        if (!(keyBegin < keyEnd)) 
+	        return;
+        auto itOverlapStart = _intervalsMap.upper_bound(keyBegin);
+        auto itNextInterval = itOverlapStart;
+        auto itPrevInterval = (itOverlapStart == std::begin(_intervalsMap)) ? std::end(_intervalsMap) : std::prev(itOverlapStart);
+        auto extensionValue = itValue(itPrevInterval);
+        while(itNextInterval!=std::end(_intervalsMap) && (itNextInterval->first < keyEnd || !(keyEnd < itNextInterval->first) && itNextInterval->second == val)) {
+            extensionValue = std::move(itNextInterval->second);
+			++itNextInterval;
+        }
+		if (itOverlapStart != itNextInterval) 
+            itNextInterval = _intervalsMap.erase(itOverlapStart, itNextInterval);
+        if (!(extensionValue == val) && (itNextInterval == std::end(_intervalsMap) || keyEnd < itNextInterval->first)) 
+            itNextInterval = _intervalsMap.emplace(keyEnd, std::move(extensionValue)).first;
+		if (!(itValue(itPrevInterval) == val)) {
+			if (itPrevInterval != std::end(_intervalsMap) && !(itPrevInterval->first < keyBegin))
+				if (previousValue(itPrevInterval) == val)
+					_intervalsMap.erase(itPrevInterval);
+				else
+					itPrevInterval->second = std::forward<V>(val);
+			else
+				_intervalsMap.emplace(keyBegin, std::forward<V>(val));
+		}
+    }
+
+	V const& operator[](K const& key) const noexcept{
+		auto it = _intervalsMap.upper_bound(key);
+		return it == std::begin(_intervalsMap)? _valBegin : std::prev(it)->second;
+	}
+};

@@ -533,3 +533,13 @@ TEST(intervals, sequence_extra_mid5) {
 	map.assign(10, 70, 'B');
 	EXPECT_EQ(map.intervals(), (std::map<int, char>{ {10, 'B' }, { 70, '-' }}));
 }
+
+TEST(intervals, sequence_double_to_string) {
+	const std::string def = "dead";
+	interval_map<double, std::string> map(def);
+	map.assign(-40, 10, std::string("get a jacket"));
+	map.assign(10, 30, "cozy");
+	map.assign(30, 60, "very hot");
+	map.assign(60, 100, "melting");
+	EXPECT_EQ(map[20], "cozy");
+}

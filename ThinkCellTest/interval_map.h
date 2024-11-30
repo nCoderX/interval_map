@@ -4,10 +4,10 @@
 #include <concepts>
 
 template<typename T>
-concept IntevalMapKeyType = std::convertible_to<decltype(std::declval<T>() < std::declval<T>()), bool> && std::copyable<T >&& std::movable<T>;
+concept IntevalMapKeyType = std::convertible_to<decltype(std::declval<T>() < std::declval<T>()), bool> && std::copyable<T > && std::is_move_constructible_v<T> && std::is_move_assignable_v<T>;
 
 template<typename T>
-concept IntevalMapValueType = std::convertible_to<decltype(std::declval<T>() == std::declval<T>()), bool> && std::copyable<T> && std::movable<T>;
+concept IntevalMapValueType = std::convertible_to<decltype(std::declval<T>() == std::declval<T>()), bool> && std::copyable<T>&& std::is_move_constructible_v<T>&& std::is_move_assignable_v<T>;
 
 template<IntevalMapKeyType K, IntevalMapValueType V>
 class interval_map {
@@ -55,10 +55,13 @@ public:
         auto itNextInterval = itOverlapStart;
         auto itPrevInterval = (itOverlapStart == std::begin(_intervalsMap)) ? std::end(_intervalsMap) : std::prev(itOverlapStart);
         auto extensionValue = itValue(itPrevInterval);
-        while(itNextInterval!=std::end(_intervalsMap) && (itNextInterval->first < keyEnd || !(keyEnd < itNextInterval->first) && itNextInterval->second == val)) {
-            extensionValue = std::move(itNextInterval->second);
-			++itNextInterval;
-        }
+        itNextInterval = std::find_if(itNextInterval, std::end(_intervalsMap), [&](const auto& interval) {
+            if (interval.first < keyEnd || !(keyEnd < interval.first) && interval.second == val) {
+                extensionValue = std::move(interval.second);
+                return false;
+            }
+            return true;
+        });
 		if (itOverlapStart != itNextInterval) 
             itNextInterval = _intervalsMap.erase(itOverlapStart, itNextInterval);
         if (!(extensionValue == val) && (itNextInterval == std::end(_intervalsMap) || keyEnd < itNextInterval->first)) 

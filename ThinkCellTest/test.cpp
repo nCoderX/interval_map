@@ -20,22 +20,23 @@ public:
 	KHolder(int k) : m_k(k) { increment_assignment(); }
 	KHolder(const KHolder& other) : m_k(other.m_k) {
 		increment_assignment();
-		std::cout << "K copy ctor" << std::endl;
+		std::cout << "K copy ctor" << '\n';
 	}
-	KHolder(KHolder&& other) : m_k(other.m_k) {
-		std::cout << "K move ctor" << std::endl;
+	KHolder(KHolder&& other) noexcept : m_k(other.m_k) {
+		std::cout << "K move ctor" << '\n';
 	}
 	KHolder& operator=(const KHolder& other) {
-		std::cout << "K copy assign" << std::endl;
+		std::cout << "K copy assign" << '\n';
 		increment_assignment();
 		m_k = other.m_k; return *this;
 	}
-	KHolder& operator=(KHolder&& other) {
-		std::cout << "K move assign" << std::endl;
+	KHolder& operator=(KHolder&& other) noexcept
+	{
+		std::cout << "K move assign" << '\n';
 		m_k = other.m_k; return *this;
 	}
 	bool operator<(const KHolder& other) const {
-		std::cout << "K compare" << std::endl;
+		std::cout << "K compare" << '\n';
 		increment_comparison();
 		return m_k < other.m_k;
 	}
@@ -67,7 +68,7 @@ public:
 		std::cout << "V copy ctor" << std::endl;
 		increment_assignment();
 	}
-	VHolder(VHolder&& other) : m_v(other.m_v) {
+	VHolder(VHolder&& other) noexcept : m_v(other.m_v) {
 		other.m_v = 0;
 		std::cout << "V move ctor" << std::endl;
 	}
@@ -110,18 +111,17 @@ static bool is_valid_interval_map(const interval_map<KHolder, VHolder>& map) {
 TEST(intervals, random_fill) {
 	testOverhead = true;
 	interval_map<KHolder, VHolder> map('-');
-	srand((unsigned)time(nullptr));
+	srand(static_cast<unsigned>(time(nullptr)));
 	testOverhead = false;
-	// assign 100 random intervals
+	// assign 1000 random intervals
 	EXPECT_TRUE(is_valid_interval_map(map));
-	for (int i = 0; i < 100; ++i) {
+	for (int i = 0; i < 1000; ++i) {
 		int start = rand() % 1000;
 		int end = start + rand() % 1000;
-		char val = rand() % 256;
+		const char val = static_cast<char>(rand() % 256);
 		map.assign(start, end, VHolder(val));
 		EXPECT_TRUE(is_valid_interval_map(map));
 	}
-	
 }
 
 TEST(intervals, types_default_constructor) {

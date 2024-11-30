@@ -52,10 +52,9 @@ public:
         if (!(keyBegin < keyEnd)) 
 	        return;
         auto itOverlapStart = _intervalsMap.upper_bound(keyBegin);
-        auto itNextInterval = itOverlapStart;
         auto itPrevInterval = (itOverlapStart == std::begin(_intervalsMap)) ? std::end(_intervalsMap) : std::prev(itOverlapStart);
         auto extensionValue = itValue(itPrevInterval);
-        itNextInterval = std::find_if(itNextInterval, std::end(_intervalsMap), [&](const auto& interval) {
+        auto itNextInterval = std::find_if(itOverlapStart, std::end(_intervalsMap), [&](const auto& interval) {
             if (interval.first < keyEnd || !(keyEnd < interval.first) && interval.second == val) {
                 extensionValue = std::move(interval.second);
                 return false;

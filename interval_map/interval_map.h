@@ -105,6 +105,8 @@ public:
 	void assign(K const& keyBegin, T&& val) noexcept {
 		auto itOverlapStart = _intervalsMap.upper_bound(keyBegin);
 		auto itPrevInterval = (itOverlapStart == std::begin(_intervalsMap)) ? std::end(_intervalsMap) : std::prev(itOverlapStart);
+		if (itOverlapStart != std::end(_intervalsMap))
+			_intervalsMap.erase(itOverlapStart, std::end(_intervalsMap));
 
 		if (!(getIteratorValue(itPrevInterval) == val)) {
 			if (itPrevInterval != std::end(_intervalsMap) && !(itPrevInterval->first < keyBegin))
@@ -115,6 +117,7 @@ public:
 			else
 				_intervalsMap.emplace(keyBegin, std::forward<T>(val));
 		}
+
 	}
 
 	V const& operator[](K const& key) const noexcept {

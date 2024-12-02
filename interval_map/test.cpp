@@ -561,7 +561,7 @@ TEST(intervals, AssignOverlappingValue) {
 	EXPECT_EQ(imap[7], 'B');
 	EXPECT_EQ(imap[8], 'C');
 	EXPECT_EQ(imap[9], 'C');
-	EXPECT_EQ(imap[10], 'A');
+	EXPECT_EQ(imap[10], 'C');
 }
 
 TEST(intervals, AssignNonOverlappingValue) {
@@ -583,4 +583,66 @@ TEST(intervals, AssignSameValue) {
 	EXPECT_EQ(imap[4], 'A');
 	EXPECT_EQ(imap[5], 'A');
 	EXPECT_EQ(imap[6], 'A');
+}
+
+TEST(intervals, SingleRange) {
+	interval_map<int, char> imap('-');
+	imap.assign(5, 'A');
+	EXPECT_EQ(imap.intervals(), (std::map<int, char>{ {5, 'A'} }));
+}
+
+TEST(intervals, SingleRedundantRange) {
+	interval_map<int, char> imap('-');
+	imap.assign(5, '-');
+	EXPECT_TRUE(imap.intervals().empty());
+}
+
+TEST(intervals, RedundantRange) {
+	interval_map<int, char> imap('-');
+	imap.assign(5, 'A');
+	imap.assign(5, 'B');
+	EXPECT_EQ(imap.intervals(), (std::map<int, char>{ {5, 'B'} }));
+}
+
+TEST(intervals, Insert) {
+	interval_map<int, char> imap('-');
+	imap.assign(5, 'A');
+	imap.assign(10, 'B');
+	imap.assign(15, 'C');
+	EXPECT_EQ(imap.intervals(), (std::map<int, char>{ {5, 'A'}, { 10, 'B' }, { 15, 'C' } }));
+}
+
+TEST(intervals, IntervalOverwrite) {
+	interval_map<int, char> imap('-');
+	imap.assign(5, 'A');
+	imap.assign(10, 'B');
+	imap.assign(15, 'C');
+	imap.assign(0, 'D');
+	EXPECT_EQ(imap.intervals(), (std::map<int, char>{ {0, 'D'} }));
+}
+
+TEST(intervals, IntervalOverwriteMultiple) {
+	interval_map<int, char> imap('-');
+	imap.assign(5, 'A');
+	imap.assign(10, 'B');
+	imap.assign(15, 'C');
+	imap.assign(5, 'D');
+	EXPECT_EQ(imap.intervals(), (std::map<int, char>{ {5, 'D'} }));
+}
+TEST(intervals, IntervalOverwriteMultiple2) {
+	interval_map<int, char> imap('-');
+	imap.assign(5, 'A');
+	imap.assign(10, 'B');
+	imap.assign(15, 'C');
+	imap.assign(10, 'D');
+	EXPECT_EQ(imap.intervals(), (std::map<int, char>{ {5, 'A'}, {10,'D'} }));
+}
+
+TEST(intervals, IntervalOverwriteDefault) {
+	interval_map<int, char> imap('-');
+	imap.assign(5, 'A');
+	imap.assign(10, 'B');
+	imap.assign(15, 'C');
+	imap.assign(0, '-');
+	EXPECT_TRUE(imap.intervals().empty());
 }

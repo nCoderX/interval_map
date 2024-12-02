@@ -22,10 +22,17 @@ concept ForwardableTo = std::is_constructible_v<U, T> && std::is_assignable_v<U&
 
 template<IntevalMapKeyType K, IntevalMapValueType V>
 class interval_map {
+private:
     using interval_map_t = std::map<K, V>;
     V _valBegin;
     interval_map_t _intervalsMap;
-    
+
+	const V& getIteratorValue(const typename interval_map_t::iterator& it) const noexcept {
+		return it == std::end(_intervalsMap) ? _valBegin : it->second;
+	}
+	const V& getPreviousValue(const typename interval_map_t::iterator& it) const noexcept {
+		return it == std::begin(_intervalsMap) ? _valBegin : std::prev(it)->second;
+	}
 public:
     interval_map(interval_map const& other) = default;
     interval_map(interval_map&& other) noexcept
@@ -60,13 +67,12 @@ public:
     }
     template<ForwardableTo<V> T>
     void assign(K const& keyBegin, K const& keyEnd, T&& val) noexcept {
-        auto itValue = [this](const auto& it) -> const V& { return it == std::end(_intervalsMap) ? _valBegin : it->second; };
-        auto previousValue = [this](const auto& it) -> const V& { return it == std::begin(_intervalsMap) ? _valBegin : std::prev(it)->second; };
-        if (!(keyBegin < keyEnd)) 
+        if (!(keyBegin < keyEnd))
             return;
+
         auto itOverlapStart = _intervalsMap.upper_bound(keyBegin);
         auto itPrevInterval = (itOverlapStart == std::begin(_intervalsMap)) ? std::end(_intervalsMap) : std::prev(itOverlapStart);
-        auto extensionValue = itValue(itPrevInterval);
+        auto extensionValue = getIteratorValue(itPrevInterval);
         auto itNextInterval = std::find_if(itOverlapStart, std::end(_intervalsMap), [&](const auto& interval) {
             if (interval.first < keyEnd || !(keyEnd < interval.first) && interval.second == val) {
                 extensionValue = std::move(interval.second);
@@ -78,9 +84,26 @@ public:
             itNextInterval = _intervalsMap.erase(itOverlapStart, itNextInterval);
         if (!(extensionValue == val) && (itNextInterval == std::end(_intervalsMap) || keyEnd < itNextInterval->first)) 
             itNextInterval = _intervalsMap.emplace(keyEnd, std::move(extensionValue)).first;
-        if (!(itValue(itPrevInterval) == val)) {
+        if (!(getIteratorValue(itPrevInterval) == val)) {
             if (itPrevInterval != std::end(_intervalsMap) && !(itPrevInterval->first < keyBegin))
-                if (previousValue(itPrevInterval) == val)
+                if (getPreviousValue(itPrevInterval) == val)
+                    _intervalsMap.erase(itPrevInterval);
+                else
+                    itPrevInterval->second = std::forward<T>(val);
+            else
+                _intervalsMap.emplace(keyBegin, std::forward<T>(val));
+        }
+    }
+
+    template<ForwardableTo<V> T>
+    void assign(K const& keyBegin, T&& val) noexcept {
+
+        auto itOverlapStart = _intervalsMap.upper_bound(keyBegin);
+        auto itPrevInterval = (itOverlapStart == std::begin(_intervalsMap)) ? std::end(_intervalsMap) : std::prev(itOverlapStart);
+
+        if (!(getIteratorValue(itPrevInterval) == val)) {
+            if (itPrevInterval != std::end(_intervalsMap) && !(itPrevInterval->first < keyBegin))
+                if (getPreviousValue(itPrevInterval) == val)
                     _intervalsMap.erase(itPrevInterval);
                 else
                     itPrevInterval->second = std::forward<T>(val);

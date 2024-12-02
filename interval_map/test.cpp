@@ -543,3 +543,44 @@ TEST(intervals, sequence_double_to_string) {
 	map.assign(60, 100, "melting");
 	EXPECT_EQ(map[20], "cozy");
 }
+
+TEST(intervals, AssignSingleValue) {
+	interval_map<int, char> imap('A');
+	imap.assign(5, 'B');
+	EXPECT_EQ(imap[4], 'A');
+	EXPECT_EQ(imap[5], 'B');
+	EXPECT_EQ(imap[6], 'B');
+}
+
+TEST(intervals, AssignOverlappingValue) {
+	interval_map<int, char> imap('A');
+	imap.assign(5, 10, 'B');
+	imap.assign(8, 'C');
+	EXPECT_EQ(imap[4], 'A');
+	EXPECT_EQ(imap[5], 'B');
+	EXPECT_EQ(imap[7], 'B');
+	EXPECT_EQ(imap[8], 'C');
+	EXPECT_EQ(imap[9], 'C');
+	EXPECT_EQ(imap[10], 'A');
+}
+
+TEST(intervals, AssignNonOverlappingValue) {
+	interval_map<int, char> imap('A');
+	imap.assign(5, 10, 'B');
+	imap.assign(15, 'C');
+	EXPECT_EQ(imap[4], 'A');
+	EXPECT_EQ(imap[5], 'B');
+	EXPECT_EQ(imap[9], 'B');
+	EXPECT_EQ(imap[10], 'A');
+	EXPECT_EQ(imap[14], 'A');
+	EXPECT_EQ(imap[15], 'C');
+	EXPECT_EQ(imap[16], 'C');
+}
+
+TEST(intervals, AssignSameValue) {
+	interval_map<int, char> imap('A');
+	imap.assign(5, 'A');
+	EXPECT_EQ(imap[4], 'A');
+	EXPECT_EQ(imap[5], 'A');
+	EXPECT_EQ(imap[6], 'A');
+}

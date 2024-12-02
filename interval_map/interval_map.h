@@ -19,9 +19,9 @@ concept IntevalMapKeyType = std::convertible_to<decltype(std::declval<T>() < std
 
 template<typename T>
 concept IntevalMapValueType = std::convertible_to<decltype(std::declval<T>() == std::declval<T>()), bool>
-&& std::copyable<T>
-&& std::is_move_constructible_v<T>
-&& std::is_move_assignable_v<T>;
+	&& std::copyable<T>
+	&& std::is_move_constructible_v<T>
+	&& std::is_move_assignable_v<T>;
 
 template<typename T, typename U>
 concept ForwardableTo = std::is_constructible_v<U, T>&& std::is_assignable_v<U&, T>;
@@ -33,10 +33,10 @@ private:
 	V _valBegin;
 	interval_map_t _intervalsMap;
 
-	const V& getIteratorValue(const typename interval_map_t::iterator& it) const noexcept {
+	[[nodiscard]] constexpr const V& getIteratorValue(const typename interval_map_t::iterator& it) const noexcept {
 		return it == std::end(_intervalsMap) ? _valBegin : it->second;
 	}
-	const V& getPreviousValue(const typename interval_map_t::iterator& it) const noexcept {
+	[[nodiscard]] constexpr const V& getPreviousValue(const typename interval_map_t::iterator& it) const noexcept {
 		return it == std::begin(_intervalsMap) ? _valBegin : std::prev(it)->second;
 	}
 public:
@@ -45,9 +45,10 @@ public:
 		: _valBegin(std::move(other._valBegin)), _intervalsMap(std::move(other._intervalsMap)) {
 	}
 	template<ForwardableTo<V> T>
-	interval_map(T&& val) noexcept
+	constexpr interval_map(T&& val) noexcept
 		: _valBegin(std::forward<T>(val)) {
 	}
+
 	interval_map& operator=(interval_map const& other) = default;
 	interval_map& operator=(interval_map&& other) noexcept {
 		_valBegin = std::move(other._valBegin);
@@ -58,19 +59,24 @@ public:
 	[[nodiscard]] typename interval_map_t::iterator begin() const noexcept {
 		return _intervalsMap.begin();
 	}
+
 	[[nodiscard]] typename interval_map_t::iterator end() const noexcept {
 		return _intervalsMap.end();
 	}
+
 	[[nodiscard]] const interval_map_t& intervals() const noexcept {
 		return _intervalsMap;
 	}
-	[[nodiscard]] const V& valBegin() const noexcept {
+
+	[[nodiscard]] constexpr const V& valBegin() const noexcept {
 		return _valBegin;
 	}
+
 	void swap(interval_map& other) noexcept {
 		std::swap(_valBegin, other._valBegin);
 		_intervalsMap.swap(other._intervalsMap);
 	}
+
 	template<ForwardableTo<V> T>
 	void assign(K const& keyBegin, K const& keyEnd, T&& val) noexcept {
 		if (!(keyBegin < keyEnd))
@@ -117,10 +123,9 @@ public:
 			else
 				_intervalsMap.emplace(keyBegin, std::forward<T>(val));
 		}
-
 	}
 
-	V const& operator[](K const& key) const noexcept {
+	[[nodiscard]] V const& operator[](K const& key) const noexcept {
 		auto it = _intervalsMap.upper_bound(key);
 		return it == std::begin(_intervalsMap) ? _valBegin : std::prev(it)->second;
 	}

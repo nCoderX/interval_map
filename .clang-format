@@ -1,0 +1,102 @@
+---
+# =============================================================================
+# Modern C++ .clang-format  (STRICT / 2-SPACE EDITION)
+# Target: C++23 with Clang 18+
+# Style: Clean, compact, highly consistent
+# =============================================================================
+
+BasedOnStyle: LLVM
+Standard: Latest
+
+# === Indentation (2-space as requested) ===
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+AccessModifierOffset: -2
+IndentCaseLabels: true
+IndentGotoLabels: false
+IndentPPDirectives: AfterHash
+IndentWrappedFunctionNames: false
+LambdaBodyIndentation: Signature
+
+# === Line length & wrapping (120 columns) ===
+ColumnLimit: 120
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false
+
+# === Braces & blocks (modern safety) ===
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: false
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+BreakBeforeBraces: Custom
+InsertBraces: true                 # Clang 16+: auto-add braces for safety
+RemoveBracesLLVM: false
+SeparateDefinitionBlocks: Always
+
+# === Functions & constructors ===
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+PackConstructorInitializers: NextLine
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+
+# === Alignment & spacing ===
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignOperands: Align
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 1
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+QualifierAlignment: Left
+
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: true
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyBlock: false
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInConditionalStatement: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# === Includes & using ===
+SortIncludes: true
+IncludeBlocks: Regroup
+SortUsingDeclarations: true
+
+# === Misc modern niceties ===
+CompactNamespaces: false
+FixNamespaceComments: true
+InsertNewlineAtEOF: true
+NamespaceIndentation: None
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeTernaryOperators: true
+
+# === Comments ===
+ReflowComments: true
+CommentPragmas: '^ IWYU pragma:'
+
+# Experimental / newer features (safe on Clang 18+)
+# AlignArrayOfStructures: Left

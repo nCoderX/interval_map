@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/fernando/dev/projects/interval_map/build/_deps/catch2-subbuild/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

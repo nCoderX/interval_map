@@ -161,3 +161,62 @@ TEST_CASE("Benchmarks") {
         return im.intervals().size();
     };
 }
+
+// =============================================================================
+// Additional edge case coverage
+// =============================================================================
+
+TEST_CASE("Assign same value as existing previous") {
+    IntervalMap<int, char> im('-');
+    im.assign(0, 10, 'A');
+    im.assign(10, 20, 'A');   // should merge
+    REQUIRE(im.intervals().size() == 1);
+    REQUIRE(im[5] == 'A');
+    REQUIRE(im[15] == 'A');
+}
+
+TEST_CASE("Assign value that matches the one after the range") {
+    IntervalMap<int, char> im('-');
+    im.assign(20, 30, 'A');
+    im.assign(10, 20, 'A');   // should merge with the following
+    REQUIRE(im.intervals().size() == 1);
+}
+
+TEST_CASE("Multiple overlapping in complex order") {
+    IntervalMap<int, char> im('0');
+    im.assign(0, 100, 'X');
+    im.assign(10, 20, 'A');
+    im.assign(15, 25, 'B');
+    im.assign(5, 30, 'C');
+    REQUIRE(im[4] == 'X');
+    REQUIRE(im[6] == 'C');
+    REQUIRE(im[29] == 'C');
+    REQUIRE(im[30] == 'X');
+}
+
+TEST_CASE("Assign touching but not overlapping") {
+    IntervalMap<int, char> im('-');
+    im.assign(0, 10, 'A');
+    im.assign(10, 20, 'B');
+    REQUIRE(im.intervals().size() == 2);
+    REQUIRE(im[9] == 'A');
+    REQUIRE(im[10] == 'B');
+}
+
+TEST_CASE("Re-assigning exact same range with same value") {
+    IntervalMap<int, char> im('-');
+    im.assign(5, 10, 'A');
+    im.assign(5, 10, 'A');
+    REQUIRE(im.intervals().size() == 1);
+}
+
+TEST_CASE("Assigning over default multiple times") {
+    IntervalMap<int, char> im('-');
+    im.assign(0, 100, 'X');
+    im.assign(10, 90, '-');     // punch hole back to default
+    REQUIRE(im.intervals().size() == 2);
+    REQUIRE(im[5] == 'X');
+    REQUIRE(im[50] == '-');
+    REQUIRE(im[95] == 'X');
+}
+

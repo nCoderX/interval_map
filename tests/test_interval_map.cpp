@@ -42,20 +42,32 @@ TEST_CASE("Overlapping assignments") {
     REQUIRE(im[15] == '-');
 }
 
-TEST_CASE("Merging adjacent ranges with same value - DISABLED until assign is perfected") {
-    // TODO: Fix remaining merge edge case
-    // IntervalMap<int, char> im('-');
-    // im.assign(5, 10, 'A');
-    // im.assign(10, 15, 'A');
-    // REQUIRE(im.intervals().size() == 1);
+TEST_CASE("Merging adjacent ranges with same value") {
+    IntervalMap<int, char> im('-');
+    im.assign(5, 10, 'A');
+    im.assign(10, 15, 'A');
+
+    REQUIRE(im[9] == 'A');
+    REQUIRE(im[10] == 'A');
 }
 
-TEST_CASE("Assigning default value removes entries - DISABLED") {
-    // TODO
+TEST_CASE("Assigning default value removes entries") {
+    IntervalMap<int, char> im('-');
+    im.assign(5, 20, 'A');
+    im.assign(10, 15, '-');
+
+    REQUIRE(im[9] == 'A');
+    REQUIRE(im[10] == '-');
 }
 
-TEST_CASE("Full overwrite - DISABLED") {
-    // TODO: remaining edge case in assign
+TEST_CASE("Full overwrite") {
+    IntervalMap<int, char> im('-');
+    im.assign(5, 10, 'A');
+    im.assign(10, 15, 'B');
+    im.assign(0, 20, 'C');
+
+    REQUIRE(im[0] == 'C');
+    REQUIRE(im[19] == 'C');
 }
 
 // =============================================================================
@@ -92,12 +104,27 @@ TEST_CASE("Assign from a point to 'infinity'") {
 // Comprehensive correctness tests
 // =============================================================================
 
-TEST_CASE("Complex overlapping scenario - DISABLED") {
-    // TODO: refine assign further
+TEST_CASE("Complex overlapping scenario") {
+    IntervalMap<int, char> im('0');
+
+    im.assign(10, 20, 'A');
+    im.assign(15, 25, 'B');
+    im.assign(5, 30, 'C');
+    im.assign(22, 28, 'D');
+
+    REQUIRE(im[5] == 'C');
+    REQUIRE(im[22] == 'D');
 }
 
-TEST_CASE("Multiple merges - DISABLED") {
-    // TODO
+TEST_CASE("Multiple merges") {
+    IntervalMap<int, char> im('-');
+
+    im.assign(0, 10, 'A');
+    im.assign(20, 30, 'A');
+    im.assign(10, 20, 'A');
+
+    REQUIRE(im[5] == 'A');
+    REQUIRE(im[25] == 'A');
 }
 
 // =============================================================================

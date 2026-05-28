@@ -21,7 +21,10 @@ if(BUILD_TESTS)
     )
     FetchContent_MakeAvailable(Catch2)
 
-    add_executable(interval_map_tests tests/test_interval_map.cpp)
+    add_executable(interval_map_tests
+        tests/test_interval_map.cpp
+        tests/test_overhead.cpp
+    )
     target_link_libraries(interval_map_tests PRIVATE interval_map Catch2::Catch2WithMain)
     target_include_directories(interval_map_tests PRIVATE include)
 

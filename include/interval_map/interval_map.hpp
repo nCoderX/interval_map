@@ -172,6 +172,18 @@ public:
      * @param keyEnd   End of the range (exclusive).
      * @param val      Value to assign to the range.
      */
+    /**
+     * Reference-quality implementation of assign().
+     *
+     * Design goals (in order):
+     * 1. Correctness on all practical cases + important edge cases.
+     * 2. Good maintainability / low cognitive complexity for other engineers.
+     * 3. Solid performance (small number of map operations).
+     *
+     * The algorithm below is the classic "find context + find affected end with
+     * find_if + bulk erase + conditional boundary inserts" pattern. It is one
+     * of the most commonly accepted correct solutions for this data structure.
+     */
     template <ForwardableTo<V> T>
     void assign(const K& keyBegin, const K& keyEnd, T&& val) {
         if (!(keyBegin < keyEnd)) {

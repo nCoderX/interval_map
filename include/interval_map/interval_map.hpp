@@ -147,24 +147,30 @@ public:
     }
 
     /**
-     * @brief Assigns a value to a half-open interval.
+     * @brief Assigns a value to a half-open interval [keyBegin, keyEnd).
      *
-     * Sets the range `[keyBegin, keyEnd)` to the given value.
-     * This is the primary mutating operation.
+     * This is the core operation of the container. It is designed to be correct
+     * for all standard cases of the ThinkCell-style interval map problem while
+     * remaining reasonably efficient.
      *
-     * - If the value is the same as the one immediately before `keyBegin`,
-     *   the new interval is merged with the previous one.
-     * - If the value is the same as the one immediately after `keyEnd`,
-     *   the following interval is merged.
-     * - Intervals completely covered by the new assignment are removed.
+     * Algorithm (current reference implementation):
+     * 1. Find the value active immediately before `keyBegin`.
+     * 2. Use `std::find_if` to locate the first interval that is not completely
+     *    covered or that cannot be absorbed because it has the same value at
+     *    the boundary.
+     * 3. Track the last overwritten value (potential restoration value).
+     * 4. Bulk-erase the covered range.
+     * 5. Conditionally insert a start point at `keyBegin`.
+     * 6. Conditionally insert a restoration point at `keyEnd`.
      *
-     * @tparam T Type convertible/assignable to V (supports perfect forwarding).
-     * @param keyBegin Inclusive start of the range.
-     * @param keyEnd   Exclusive end of the range.
-     * @param val      The value to assign.
+     * The implementation deliberately uses standard algorithms (`upper_bound`,
+     * `lower_bound`, `find_if`, range `erase`) to keep the code clean and
+     * maintainable.
      *
-     * @note Empty ranges (`keyBegin == keyEnd` or `keyBegin > keyEnd` in ordering)
-     *       are silently ignored.
+     * @tparam T Type forwardable to V.
+     * @param keyBegin Start of the range (inclusive).
+     * @param keyEnd   End of the range (exclusive).
+     * @param val      Value to assign to the range.
      */
     template <ForwardableTo<V> T>
     void assign(const K& keyBegin, const K& keyEnd, T&& val) {
@@ -172,29 +178,40 @@ public:
             return;
         }
 
-        // Determine value before the range
+        // Find first entry at/after keyBegin
         auto it = m_intervals.upper_bound(keyBegin);
-        V before = (it == m_intervals.begin()) ? m_valBegin : std::prev(it)->second;
+        auto prevIt = (it == m_intervals.begin()) ? m_intervals.end() : std::prev(it);
+        V prevVal = valueAt(prevIt);
 
-        // Find first entry at or after keyEnd
-        auto itEnd = m_intervals.lower_bound(keyEnd);
+        // Use find_if to locate the end of the affected range while tracking
+        // the last value we are overwriting (for potential restoration at keyEnd).
+        V lastOverwritten = prevVal;
+        auto itEnd = std::find_if(it, m_intervals.end(), [&](const auto& p) {
+            if (p.first < keyEnd) {
+                lastOverwritten = p.second;
+                return false;
+            }
+            bool exact = !(p.first < keyEnd) && !(keyEnd < p.first);
+            if (exact && p.second == val) {
+                lastOverwritten = p.second;
+                return false;
+            }
+            return true;
+        });
 
-        // Erase [keyBegin, keyEnd)
-        auto eraseStart = m_intervals.lower_bound(keyBegin);
-        m_intervals.erase(eraseStart, itEnd);
+        // Bulk erase covered intervals
+        m_intervals.erase(it, itEnd);
 
-        // Insert start if different from 'before'
-        if (!(before == val)) {
+        // Insert at start only if different from previous
+        if (!(prevVal == val)) {
             m_intervals.emplace(keyBegin, std::forward<T>(val));
         }
 
-        // Determine value after the range (after the erase)
-        itEnd = m_intervals.lower_bound(keyEnd);
-        V after = (itEnd == m_intervals.end()) ? m_valBegin : itEnd->second;
-
-        // Insert restoration point at keyEnd if needed
-        if (!(after == val)) {
-            m_intervals.emplace(keyEnd, std::move(after));
+        // Insert restoration at keyEnd if the value after the range differs
+        auto afterIt = m_intervals.lower_bound(keyEnd);
+        V afterVal = valueAt(afterIt);
+        if (!(afterVal == val)) {
+            m_intervals.emplace(keyEnd, std::move(lastOverwritten));
         }
     }
 

@@ -220,3 +220,71 @@ TEST_CASE("Assigning over default multiple times") {
     REQUIRE(im[95] == 'X');
 }
 
+
+// =============================================================================
+// Strict correctness helpers and advanced tests
+// =============================================================================
+
+namespace test_helpers {
+
+template <typename K, typename V>
+bool is_valid_interval_map(const interval_map::IntervalMap<K, V>& m) {
+    const auto& intervals = m.intervals();
+    if (intervals.empty()) return true;
+
+    auto prev_val = m.valBegin();
+    K prev_key = K{}; // not ideal, but for validation we mostly care about values
+
+    for (const auto& [key, val] : intervals) {
+        if (val == prev_val) {
+            return false; // adjacent same value not merged
+        }
+        prev_val = val;
+    }
+    return true;
+}
+
+} // namespace test_helpers
+
+TEST_CASE("Invariant: never stores default value and never has adjacent equal values") {
+    IntervalMap<int, char> im('-');
+    im.assign(0, 10, 'A');
+    im.assign(20, 30, 'B');
+    im.assign(5, 25, 'A');   // complex overwrite
+
+    REQUIRE(test_helpers::is_valid_interval_map(im));
+}
+
+TEST_CASE("Adjacent same value from separate assigns must merge") {
+    IntervalMap<int, char> im('-');
+    im.assign(0, 10, 'X');
+    im.assign(10, 20, 'X');
+
+    REQUIRE(im.intervals().size() == 1);
+    REQUIRE(im[5] == 'X');
+    REQUIRE(im[15] == 'X');
+}
+
+TEST_CASE("Punching hole back to default then re-assigning") {
+    IntervalMap<int, char> im('-');
+    im.assign(0, 100, 'X');
+    im.assign(20, 80, '-');           // hole
+    im.assign(30, 70, 'Y');
+
+    REQUIRE(im[10] == 'X');
+    REQUIRE(im[25] == '-');
+    REQUIRE(im[50] == 'Y');
+    REQUIRE(im[85] == 'X');
+    REQUIRE(test_helpers::is_valid_interval_map(im));
+}
+
+TEST_CASE("Full overwrite with default at the end") {
+    IntervalMap<int, char> im('0');
+    im.assign(10, 20, 'A');
+    im.assign(15, 30, 'B');
+    im.assign(0, 50, '0');   // back to default over everything
+
+    REQUIRE(im.intervals().empty());
+    REQUIRE(im[100] == '0');
+}
+

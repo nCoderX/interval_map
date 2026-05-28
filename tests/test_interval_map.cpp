@@ -104,35 +104,31 @@ TEST_CASE("Multiple merges - DISABLED") {
 // Performance benchmarks
 // =============================================================================
 
-TEST_CASE("Benchmark: many small inserts") {
-    BENCHMARK("10000 sequential small assigns") {
+TEST_CASE("Benchmarks") {
+    BENCHMARK("10000 sequential small non-overlapping assigns") {
         IntervalMap<int, int> im(0);
         for (int i = 0; i < 10000; ++i) {
             im.assign(i * 10, i * 10 + 5, i);
         }
         return im.intervals().size();
     };
-}
 
-TEST_CASE("Benchmark: heavy overlapping") {
-    BENCHMARK("1000 overlapping assigns") {
+    BENCHMARK("1000 heavily overlapping assigns") {
         IntervalMap<int, int> im(0);
         for (int i = 0; i < 1000; ++i) {
             im.assign(i, i + 500, i % 17);
         }
         return im.intervals().size();
     };
-}
 
-TEST_CASE("Benchmark: random workload") {
-    BENCHMARK("5000 random assigns on [0,10000]") {
+    BENCHMARK("5000 random overlapping assigns") {
         IntervalMap<int, int> im(-1);
         std::mt19937 rng(42);
         std::uniform_int_distribution<int> dist(0, 10000);
 
         for (int i = 0; i < 5000; ++i) {
             int a = dist(rng);
-            int b = a + dist(rng) % 200;
+            int b = a + dist(rng) % 200 + 1;
             im.assign(a, b, i % 100);
         }
         return im.intervals().size();

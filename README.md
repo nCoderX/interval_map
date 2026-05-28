@@ -8,17 +8,36 @@ This started as a sample solution for the famous **ThinkCell C++ recruitment tes
 
 - Header-only `IntervalMap<K, V>`
 - Modern CMake build (C++23)
-- Unit tests using Catch2
-- Cross-platform (tested on Linux with GCC 15)
+- Unit tests + benchmarks using Catch2
+- Uses **vcpkg** for dependencies (as preferred)
+- Cross-platform
 
-**Note**: The core `assign()` algorithm is still being refined for full correctness and efficiency matching the original challenge requirements. Basic functionality works.
+## Building with vcpkg (Recommended)
 
-## Building
+```bash
+# First time setup
+vcpkg integrate install          # optional but recommended
+
+cmake -S . -B build \
+    -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+    -DCMAKE_BUILD_TYPE=Release
+
+cmake --build build -j
+./build/interval_map_tests
+```
+
+If you're inside a vcpkg manifest environment (recommended):
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
-./build/interval_map_tests
+```
+
+## Building without vcpkg (not recommended)
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
 ```
 
 ## Usage
@@ -37,11 +56,10 @@ std::cout << im[25]; // "other"
 
 ## Roadmap / Improvements
 
-- [ ] Fully correct and efficient `assign()` implementation
-- [ ] More comprehensive test coverage (including overhead tests from the original challenge)
+- [ ] Fully correct and efficient `assign()` implementation (some edge cases remain)
+- [ ] More comprehensive overhead tests matching the original ThinkCell challenge
 - [ ] Iterator support
-- [ ] Documentation + examples
-- [ ] vcpkg / Conan support
+- [x] vcpkg support (done)
 
 Contributions welcome!
 

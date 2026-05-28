@@ -1,0 +1,11 @@
+{
+  "name": "interval-map",
+  "version": "1.0.0",
+  "dependencies": [
+    {
+      "name": "catch2",
+      "version>=": "3.5.0"
+    }
+  ],
+  "builtin-baseline": "a7b6122f6b6504d16d961173eac2a3c9f87d6de6"
+}

@@ -2,7 +2,6 @@
 // All rights reserved.
 //
 // This code is licensed under the MIT License.
-// You may obtain a copy of the License at
 // https://opensource.org/licenses/MIT
 
 #pragma once
@@ -11,7 +10,6 @@
 #include <concepts>
 #include <type_traits>
 #include <utility>
-#include <cassert>
 
 namespace interval_map {
 
@@ -19,7 +17,7 @@ template <typename T>
 concept IntervalKey = std::copyable<T> &&
                       std::is_move_constructible_v<T> &&
                       std::is_move_assignable_v<T> &&
-                      requires(T a, T b) {
+                      requires(const T& a, const T& b) {
                           { a < b } -> std::convertible_to<bool>;
                       };
 
@@ -27,68 +25,62 @@ template <typename T>
 concept IntervalValue = std::copyable<T> &&
                         std::is_move_constructible_v<T> &&
                         std::is_move_assignable_v<T> &&
-                        requires(T a, T b) {
+                        requires(const T& a, const T& b) {
                             { a == b } -> std::convertible_to<bool>;
                         };
 
-template <typename T, typename U>
-concept ForwardableTo = std::is_constructible_v<U, T> && std::is_assignable_v<U&, T>;
+template <typename From, typename To>
+concept ForwardableTo = std::is_constructible_v<To, From> &&
+                        std::is_assignable_v<To&, From>;
 
 /**
- * @brief Associative container that maps half-open intervals [keyBegin, keyEnd) to values.
+ * @brief Efficient map from half-open intervals [keyBegin, keyEnd) to values.
  *
- * Adjacent intervals with the same value are automatically merged.
- * The default value (valBegin) is never stored explicitly in the map.
- *
- * This is a modernized and improved implementation inspired by the
- * famous ThinkCell C++ recruitment test.
+ * This is a high-performance implementation suitable for the ThinkCell-style
+ * interview challenge. Adjacent intervals with identical values are merged
+ * automatically. The initial value is never stored in the underlying map.
  */
 template <IntervalKey K, IntervalValue V>
 class IntervalMap {
 private:
-    using MapType = std::map<K, V>;
+    using Map = std::map<K, V>;
 
     V m_valBegin;
-    MapType m_intervals;
+    Map m_intervals;
 
     [[nodiscard]]
-    constexpr const V& getValueAtIterator(typename MapType::const_iterator it) const noexcept {
+    constexpr const V& valueAt(typename Map::const_iterator it) const noexcept {
         return (it == m_intervals.end()) ? m_valBegin : it->second;
     }
 
     [[nodiscard]]
-    constexpr const V& getPreviousValue(typename MapType::const_iterator it) const noexcept {
+    constexpr const V& previousValue(typename Map::const_iterator it) const noexcept {
         return (it == m_intervals.begin()) ? m_valBegin : std::prev(it)->second;
     }
 
 public:
-    // --- Constructors ---
+    // --- Construction ---
 
     IntervalMap() = delete;
 
-    explicit IntervalMap(V const& val) : m_valBegin(val) {}
-    explicit IntervalMap(V&& val) noexcept : m_valBegin(std::move(val)) {}
+    template <ForwardableTo<V> T>
+    explicit constexpr IntervalMap(T&& value) noexcept
+        : m_valBegin(std::forward<T>(value)) {}
 
-    IntervalMap(IntervalMap const& other) = default;
-    IntervalMap(IntervalMap&& other) noexcept = default;
-
-    IntervalMap& operator=(IntervalMap const& other) = default;
-    IntervalMap& operator=(IntervalMap&& other) noexcept = default;
+    IntervalMap(const IntervalMap&) = default;
+    IntervalMap(IntervalMap&&) noexcept = default;
+    IntervalMap& operator=(const IntervalMap&) = default;
+    IntervalMap& operator=(IntervalMap&&) noexcept = default;
 
     // --- Observers ---
 
-    [[nodiscard]] const MapType& intervals() const noexcept { return m_intervals; }
+    [[nodiscard]] const Map& intervals() const noexcept { return m_intervals; }
     [[nodiscard]] const V& valBegin() const noexcept { return m_valBegin; }
 
-    [[nodiscard]] typename MapType::const_iterator begin() const noexcept {
-        return m_intervals.begin();
-    }
+    [[nodiscard]] auto begin() const noexcept { return m_intervals.begin(); }
+    [[nodiscard]] auto end() const noexcept { return m_intervals.end(); }
 
-    [[nodiscard]] typename MapType::const_iterator end() const noexcept {
-        return m_intervals.end();
-    }
-
-    [[nodiscard]] V const& operator[](K const& key) const noexcept {
+    [[nodiscard]] const V& operator[](const K& key) const noexcept {
         auto it = m_intervals.upper_bound(key);
         return (it == m_intervals.begin()) ? m_valBegin : std::prev(it)->second;
     }
@@ -100,80 +92,83 @@ public:
         m_intervals.swap(other.m_intervals);
     }
 
-    /**
-     * @brief Assigns a value to the half-open interval [keyBegin, keyEnd).
-     */
-    template <ForwardableTo<V> T>
-    void assign(K const& keyBegin, K const& keyEnd, T&& val) {
-        if (!(keyBegin < keyEnd)) {
-            return;
-        }
-
-        // Find the first point strictly after keyBegin
-        auto it = m_intervals.upper_bound(keyBegin);
-
-        // Value just before keyBegin
-        V prevVal = (it == m_intervals.begin()) ? m_valBegin : std::prev(it)->second;
-
-        // Remove all intervals that start inside [keyBegin, keyEnd)
-        while (it != m_intervals.end() && it->first < keyEnd) {
-            prevVal = it->second; // last overwritten value
-            it = m_intervals.erase(it);
-        }
-
-        // Insert start of new interval if necessary
-        bool needStart = (prevVal != val);
-        if (needStart) {
-            // Check if previous entry can be overwritten
-            auto prev = m_intervals.upper_bound(keyBegin);
-            if (prev != m_intervals.begin()) {
-                --prev;
-                if (prev->first == keyBegin) {
-                    prev->second = std::forward<T>(val);
-                    needStart = false;
-                }
-            }
-            if (needStart) {
-                m_intervals.emplace(keyBegin, std::forward<T>(val));
-            }
-        }
-
-        // Insert restoration point at keyEnd if needed
-        V afterVal = (it == m_intervals.end()) ? m_valBegin : it->second;
-        if (afterVal != val) {
-            // Only insert if there's not already an entry at keyEnd
-            auto atEnd = m_intervals.find(keyEnd);
-            if (atEnd == m_intervals.end()) {
-                m_intervals.emplace(keyEnd, afterVal);
-            }
-        }
+    void clear() noexcept {
+        m_intervals.clear();
     }
 
     /**
-     * @brief Assigns a value from keyBegin to the end (convenience overload).
+     * @brief Assigns `val` to the half-open interval [keyBegin, keyEnd).
+     *
+     * This is the core operation. It is designed to be efficient (few
+     * comparisons and value copies) while maintaining the invariants.
      */
     template <ForwardableTo<V> T>
-    void assign(K const& keyBegin, T&& val) {
-        // Simplified version: assign from keyBegin to "infinity"
-        auto it = m_intervals.upper_bound(keyBegin);
-        m_intervals.erase(it, m_intervals.end());
+    void assign(const K& keyBegin, const K& keyEnd, T&& val) {
+        if (!(keyBegin < keyEnd))
+            return;
 
-        auto prevIt = m_intervals.upper_bound(keyBegin);
-        if (prevIt != m_intervals.begin()) {
-            --prevIt;
+        auto itOverlapStart = m_intervals.upper_bound(keyBegin);
+        auto itPrevInterval = (itOverlapStart == m_intervals.begin())
+                                  ? m_intervals.end()
+                                  : std::prev(itOverlapStart);
+        V extensionValue = valueAt(itPrevInterval);
+
+        auto itNextInterval = std::find_if(
+            itOverlapStart, m_intervals.end(), [&](const auto& interval) {
+                if (interval.first < keyEnd ||
+                    (!(keyEnd < interval.first) && interval.second == val)) {
+                    extensionValue = interval.second;
+                    return false;
+                }
+                return true;
+            });
+
+        if (itOverlapStart != itNextInterval) {
+            itNextInterval = m_intervals.erase(itOverlapStart, itNextInterval);
         }
 
-        if (getValueAtIterator(prevIt) != val) {
-            if (prevIt != m_intervals.end() && prevIt->first == keyBegin) {
-                prevIt->second = std::forward<T>(val);
+        if (!(extensionValue == val) &&
+            (itNextInterval == m_intervals.end() || keyEnd < itNextInterval->first)) {
+            itNextInterval = m_intervals.emplace(keyEnd, std::move(extensionValue)).first;
+        }
+
+        if (!(valueAt(itPrevInterval) == val)) {
+            if (itPrevInterval != m_intervals.end() &&
+                !(itPrevInterval->first < keyBegin)) {
+                if (previousValue(itPrevInterval) == val) {
+                    m_intervals.erase(itPrevInterval);
+                } else {
+                    itPrevInterval->second = std::forward<T>(val);
+                }
             } else {
                 m_intervals.emplace(keyBegin, std::forward<T>(val));
             }
         }
     }
 
-    void clear() {
-        m_intervals.clear();
+    template <ForwardableTo<V> T>
+    void assign(const K& keyBegin, T&& val) {
+        auto itOverlapStart = m_intervals.upper_bound(keyBegin);
+        auto itPrevInterval = (itOverlapStart == m_intervals.begin())
+                                  ? m_intervals.end()
+                                  : std::prev(itOverlapStart);
+
+        if (itOverlapStart != m_intervals.end()) {
+            m_intervals.erase(itOverlapStart, m_intervals.end());
+        }
+
+        if (!(valueAt(itPrevInterval) == val)) {
+            if (itPrevInterval != m_intervals.end() &&
+                !(itPrevInterval->first < keyBegin)) {
+                if (previousValue(itPrevInterval) == val) {
+                    m_intervals.erase(itPrevInterval);
+                } else {
+                    itPrevInterval->second = std::forward<T>(val);
+                }
+            } else {
+                m_intervals.emplace(keyBegin, std::forward<T>(val));
+            }
+        }
     }
 };
 

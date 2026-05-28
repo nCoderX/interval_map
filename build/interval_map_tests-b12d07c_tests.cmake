@@ -1,7 +1,0 @@
-add_test( [==[Basic construction and lookup]==] /home/fernando/dev/projects/interval_map/build/interval_map_tests [==[Basic construction and lookup]==]  )
-set_tests_properties( [==[Basic construction and lookup]==] PROPERTIES WORKING_DIRECTORY /home/fernando/dev/projects/interval_map/build)
-add_test( [==[Basic assign creates one entry]==] /home/fernando/dev/projects/interval_map/build/interval_map_tests [==[Basic assign creates one entry]==]  )
-set_tests_properties( [==[Basic assign creates one entry]==] PROPERTIES WORKING_DIRECTORY /home/fernando/dev/projects/interval_map/build)
-add_test( [==[Overlapping assign]==] /home/fernando/dev/projects/interval_map/build/interval_map_tests [==[Overlapping assign]==]  )
-set_tests_properties( [==[Overlapping assign]==] PROPERTIES WORKING_DIRECTORY /home/fernando/dev/projects/interval_map/build)
-set( interval_map_tests_TESTS [==[Basic construction and lookup]==] [==[Basic assign creates one entry]==] [==[Overlapping assign]==])

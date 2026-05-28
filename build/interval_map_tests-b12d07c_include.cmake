@@ -1,5 +1,0 @@
-if(EXISTS "/home/fernando/dev/projects/interval_map/build/interval_map_tests-b12d07c_tests.cmake")
-  include("/home/fernando/dev/projects/interval_map/build/interval_map_tests-b12d07c_tests.cmake")
-else()
-  add_test(interval_map_tests_NOT_BUILT-b12d07c interval_map_tests_NOT_BUILT-b12d07c)
-endif()

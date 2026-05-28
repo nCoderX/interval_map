@@ -28,8 +28,9 @@ int main() {
 ## Main Sections
 
 - [Usage Guide](usage.md)
+- [The assign() Operation](assign.md) — core semantics and current status
 - [Examples](examples.md)
-- [Performance](performance.md) (see benchmarks in the test suite)
+- [Performance](performance.md)
 
 ## Building
 

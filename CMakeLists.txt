@@ -13,7 +13,7 @@ target_include_directories(interval_map INTERFACE
 # --- Tests ---
 option(BUILD_TESTS "Build unit tests" ON)
 if(BUILD_TESTS)
-    # Try vcpkg first, then fall back to FetchContent
+    # Try vcpkg first, then fall back to FetchContent.
     find_package(Catch2 3 QUIET)
 
     if(NOT Catch2_FOUND)

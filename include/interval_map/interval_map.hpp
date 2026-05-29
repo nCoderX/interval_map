@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include <map>
+#include <algorithm>
 #include <concepts>
+#include <map>
 #include <type_traits>
 #include <utility>
 
@@ -34,48 +35,14 @@ concept ForwardableTo = std::is_constructible_v<To, From> &&
                         std::is_assignable_v<To&, From>;
 
 /**
- * @brief Efficient associative container for mapping half-open intervals to values.
+ * @brief Efficient map from half-open intervals [keyBegin, keyEnd) to values.
  *
- * `IntervalMap<K, V>` represents a mapping from keys to values where large contiguous
- * ranges of keys can share the same value. Only the "change points" are stored
- * internally using a `std::map`.
- *
- * Key properties:
- * - `assign(keyBegin, keyEnd, value)` sets the range `[keyBegin, keyEnd)` to `value`.
- * - Adjacent intervals with identical values are automatically merged.
- * - The initial/default value is **never** stored in the internal map.
- * - Lookup via `operator[]` is O(log n).
- *
- * This data structure is particularly useful for:
- * - Resource scheduling (rooms, machines, personnel over time)
- * - Tiered pricing / billing systems
- * - Time-varying configuration and feature flags
- * - Memory region or IP range tracking
- *
- * The design is inspired by the classic ThinkCell C++ recruitment test, with
- * modern C++23 idioms and a focus on clarity and testability.
- *
- * @tparam K  Key type. Requirements: copyable, movable, and supports `operator<`.
- * @tparam V  Value type. Requirements: copyable, movable, and supports `operator==`.
- *
- * @note Performance: The implementation uses `std::map` lower/upper_bound and
- *       range erase for good average-case behavior. Further optimizations for
- *       minimal comparisons are possible for very hot paths.
+ * This is a high-performance implementation suitable for the ThinkCell-style
+ * interview challenge. Adjacent intervals with identical values are merged
+ * automatically. The initial value is never stored in the underlying map.
  */
 template <IntervalKey K, IntervalValue V>
 class IntervalMap {
-    /**
-     * @class IntervalMap
-     *
-     * @brief Main container class.
-     *
-     * Example:
-     * @code
-     * interval_map::IntervalMap<int, std::string> schedule("Free");
-     * schedule.assign(9, 12, "Meeting with Alice");
-     * std::cout << schedule[10];   // "Meeting with Alice"
-     * @endcode
-     */
 private:
     using Map = std::map<K, V>;
 
@@ -108,28 +75,12 @@ public:
 
     // --- Observers ---
 
-    /**
-     * @brief Returns a const reference to the underlying change-point map.
-     *
-     * The returned `std::map` contains only the points where the value changes.
-     * This is useful for debugging and for advanced iteration use cases.
-     *
-     * @warning Do not modify the returned map directly.
-     */
     [[nodiscard]] const Map& intervals() const noexcept { return m_intervals; }
     [[nodiscard]] const V& valBegin() const noexcept { return m_valBegin; }
 
     [[nodiscard]] auto begin() const noexcept { return m_intervals.begin(); }
     [[nodiscard]] auto end() const noexcept { return m_intervals.end(); }
 
-    /**
-     * @brief Returns the value associated with a specific key.
-     *
-     * Finds the greatest change point that is ≤ `key` and returns its value,
-     * or the default value if no such point exists.
-     *
-     * Complexity: O(log n)
-     */
     [[nodiscard]] const V& operator[](const K& key) const noexcept {
         auto it = m_intervals.upper_bound(key);
         return (it == m_intervals.begin()) ? m_valBegin : std::prev(it)->second;
@@ -147,94 +98,77 @@ public:
     }
 
     /**
-     * @brief Assigns a value to a half-open interval [keyBegin, keyEnd).
+     * @brief Assigns `val` to the half-open interval [keyBegin, keyEnd).
      *
-     * This is the core operation of the container. It is designed to be correct
-     * for all standard cases of the ThinkCell-style interval map problem while
-     * remaining reasonably efficient.
-     *
-     * Algorithm (current reference implementation):
-     * 1. Find the value active immediately before `keyBegin`.
-     * 2. Use `std::find_if` to locate the first interval that is not completely
-     *    covered or that cannot be absorbed because it has the same value at
-     *    the boundary.
-     * 3. Track the last overwritten value (potential restoration value).
-     * 4. Bulk-erase the covered range.
-     * 5. Conditionally insert a start point at `keyBegin`.
-     * 6. Conditionally insert a restoration point at `keyEnd`.
-     *
-     * The implementation deliberately uses standard algorithms (`upper_bound`,
-     * `lower_bound`, `find_if`, range `erase`) to keep the code clean and
-     * maintainable.
-     *
-     * @tparam T Type forwardable to V.
-     * @param keyBegin Start of the range (inclusive).
-     * @param keyEnd   End of the range (exclusive).
-     * @param val      Value to assign to the range.
-     */
-    /**
-     * Reference-quality implementation of assign().
-     *
-     * Design goals (in order):
-     * 1. Correctness on all practical cases + important edge cases.
-     * 2. Good maintainability / low cognitive complexity for other engineers.
-     * 3. Solid performance (small number of map operations).
-     *
-     * The algorithm below is the classic "find context + find affected end with
-     * find_if + bulk erase + conditional boundary inserts" pattern. It is one
-     * of the most commonly accepted correct solutions for this data structure.
+     * This is the core operation. It is designed to be efficient (few
+     * comparisons and value copies) while maintaining the invariants.
      */
     template <ForwardableTo<V> T>
     void assign(const K& keyBegin, const K& keyEnd, T&& val) {
-        if (!(keyBegin < keyEnd)) {
+        if (!(keyBegin < keyEnd))
             return;
+
+        auto itOverlapStart = m_intervals.upper_bound(keyBegin);
+        auto itPrevInterval = (itOverlapStart == m_intervals.begin())
+                                  ? m_intervals.end()
+                                  : std::prev(itOverlapStart);
+        V extensionValue = valueAt(itPrevInterval);
+
+        auto itNextInterval = std::find_if(
+            itOverlapStart, m_intervals.end(), [&](const auto& interval) {
+                if (interval.first < keyEnd ||
+                    (!(keyEnd < interval.first) && interval.second == val)) {
+                    extensionValue = interval.second;
+                    return false;
+                }
+                return true;
+            });
+
+        if (itOverlapStart != itNextInterval) {
+            itNextInterval = m_intervals.erase(itOverlapStart, itNextInterval);
         }
 
-        // Value before the range
-        auto it = m_intervals.upper_bound(keyBegin);
-        V before = (it == m_intervals.begin()) ? m_valBegin : std::prev(it)->second;
-
-        // Erase the entire [keyBegin, keyEnd) range
-        auto eraseStart = m_intervals.lower_bound(keyBegin);
-        auto eraseEnd = m_intervals.lower_bound(keyEnd);
-        m_intervals.erase(eraseStart, eraseEnd);
-
-        // Insert start point only if different from 'before'
-        if (!(before == val)) {
-            m_intervals.emplace(keyBegin, std::forward<T>(val));
+        if (!(extensionValue == val) &&
+            (itNextInterval == m_intervals.end() || keyEnd < itNextInterval->first)) {
+            itNextInterval = m_intervals.emplace(keyEnd, std::move(extensionValue)).first;
         }
 
-        // Value after the range now
-        auto afterIt = m_intervals.lower_bound(keyEnd);
-        V after = (afterIt == m_intervals.end()) ? m_valBegin : afterIt->second;
-
-        // Insert restoration point at keyEnd if needed
-        if (!(after == val)) {
-            m_intervals.emplace(keyEnd, std::move(after));
+        if (!(valueAt(itPrevInterval) == val)) {
+            if (itPrevInterval != m_intervals.end() &&
+                !(itPrevInterval->first < keyBegin)) {
+                if (previousValue(itPrevInterval) == val) {
+                    m_intervals.erase(itPrevInterval);
+                } else {
+                    itPrevInterval->second = std::forward<T>(val);
+                }
+            } else {
+                m_intervals.emplace(keyBegin, std::forward<T>(val));
+            }
         }
     }
 
-    /**
-     * @brief Assigns a value from `keyBegin` to the end of the key space.
-     *
-     * Equivalent to `assign(keyBegin, some_max_value, val)` but more efficient.
-     * Everything from `keyBegin` onwards will have the new value (until another
-     * `assign` changes it later).
-     */
     template <ForwardableTo<V> T>
     void assign(const K& keyBegin, T&& val) {
-        // Remove everything from keyBegin onwards
-        auto it = m_intervals.lower_bound(keyBegin);
-        m_intervals.erase(it, m_intervals.end());
+        auto itOverlapStart = m_intervals.upper_bound(keyBegin);
+        auto itPrevInterval = (itOverlapStart == m_intervals.begin())
+                                  ? m_intervals.end()
+                                  : std::prev(itOverlapStart);
 
-        // Value before keyBegin
-        auto prevIt = m_intervals.upper_bound(keyBegin);
-        if (prevIt != m_intervals.begin()) --prevIt;
+        if (itOverlapStart != m_intervals.end()) {
+            m_intervals.erase(itOverlapStart, m_intervals.end());
+        }
 
-        V before = valueAt(prevIt);
-
-        if (!(before == val)) {
-            m_intervals.emplace(keyBegin, std::forward<T>(val));
+        if (!(valueAt(itPrevInterval) == val)) {
+            if (itPrevInterval != m_intervals.end() &&
+                !(itPrevInterval->first < keyBegin)) {
+                if (previousValue(itPrevInterval) == val) {
+                    m_intervals.erase(itPrevInterval);
+                } else {
+                    itPrevInterval->second = std::forward<T>(val);
+                }
+            } else {
+                m_intervals.emplace(keyBegin, std::forward<T>(val));
+            }
         }
     }
 };

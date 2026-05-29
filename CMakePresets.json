@@ -1,0 +1,39 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default Configure",
+      "description": "Configure using Ninja in ./build-preset",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-preset",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "Build",
+      "displayName": "Build",
+      "description": "Build all targets",
+      "configurePreset": "default"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "Test",
+      "displayName": "Run Unit Tests",
+      "description": "Run CTest with output-on-failure",
+      "configurePreset": "default",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

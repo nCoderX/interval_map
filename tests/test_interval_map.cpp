@@ -288,3 +288,67 @@ TEST_CASE("Full overwrite with default at the end") {
     REQUIRE(im[100] == '0');
 }
 
+
+// =============================================================================
+// Comprehensive Functional + Invariant Tests (Core Requirements)
+// =============================================================================
+
+namespace {
+
+template <typename K, typename V>
+bool is_valid(const interval_map::IntervalMap<K, V>& m) {
+    const auto& ints = m.intervals();
+    if (ints.empty()) return true;
+
+    auto prev_val = m.valBegin();
+    for (const auto& [key, val] : ints) {
+        if (val == prev_val) return false; // adjacent same values not merged
+        prev_val = val;
+    }
+    return true;
+}
+
+} // anonymous namespace
+
+TEST_CASE("Core invariant after many operations") {
+    IntervalMap<int, char> im('0');
+    im.assign(0, 1000, 'X');
+    im.assign(100, 200, 'A');
+    im.assign(150, 300, 'B');
+    im.assign(50, 250, 'C');
+    im.assign(800, 900, 'D');
+    im.assign(850, 950, '0'); // punch some back to default
+
+    REQUIRE(is_valid(im));
+}
+
+TEST_CASE("Adjacent same value assignments must collapse to one entry") {
+    IntervalMap<int, char> im('-');
+    im.assign(0, 10, 'X');
+    im.assign(10, 20, 'X');
+    REQUIRE(im.intervals().size() == 1);
+}
+
+TEST_CASE("Hole punching + re-filling") {
+    IntervalMap<int, char> im('-');
+    im.assign(0, 100, 'X');
+    im.assign(20, 80, '-');
+    im.assign(30, 70, 'Y');
+
+    REQUIRE(is_valid(im));
+    REQUIRE(im[10] == 'X');
+    REQUIRE(im[25] == '-');
+    REQUIRE(im[50] == 'Y');
+    REQUIRE(im[85] == 'X');
+}
+
+TEST_CASE("Complete overwrite back to default removes all entries") {
+    IntervalMap<int, char> im('0');
+    im.assign(10, 20, 'A');
+    im.assign(15, 30, 'B');
+    im.assign(0, 100, '0');
+
+    REQUIRE(im.intervals().empty());
+    REQUIRE(im[50] == '0');
+}
+

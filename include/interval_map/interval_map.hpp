@@ -190,40 +190,27 @@ public:
             return;
         }
 
-        // Find first entry at/after keyBegin
+        // Value before the range
         auto it = m_intervals.upper_bound(keyBegin);
-        auto prevIt = (it == m_intervals.begin()) ? m_intervals.end() : std::prev(it);
-        V prevVal = valueAt(prevIt);
+        V before = (it == m_intervals.begin()) ? m_valBegin : std::prev(it)->second;
 
-        // Use find_if to locate the end of the affected range while tracking
-        // the last value we are overwriting (for potential restoration at keyEnd).
-        V lastOverwritten = prevVal;
-        auto itEnd = std::find_if(it, m_intervals.end(), [&](const auto& p) {
-            if (p.first < keyEnd) {
-                lastOverwritten = p.second;
-                return false;
-            }
-            bool exact = !(p.first < keyEnd) && !(keyEnd < p.first);
-            if (exact && p.second == val) {
-                lastOverwritten = p.second;
-                return false;
-            }
-            return true;
-        });
+        // Erase the entire [keyBegin, keyEnd) range
+        auto eraseStart = m_intervals.lower_bound(keyBegin);
+        auto eraseEnd = m_intervals.lower_bound(keyEnd);
+        m_intervals.erase(eraseStart, eraseEnd);
 
-        // Bulk erase covered intervals
-        m_intervals.erase(it, itEnd);
-
-        // Insert at start only if different from previous
-        if (!(prevVal == val)) {
+        // Insert start point only if different from 'before'
+        if (!(before == val)) {
             m_intervals.emplace(keyBegin, std::forward<T>(val));
         }
 
-        // Insert restoration at keyEnd if the value after the range differs
+        // Value after the range now
         auto afterIt = m_intervals.lower_bound(keyEnd);
-        V afterVal = valueAt(afterIt);
-        if (!(afterVal == val)) {
-            m_intervals.emplace(keyEnd, std::move(lastOverwritten));
+        V after = (afterIt == m_intervals.end()) ? m_valBegin : afterIt->second;
+
+        // Insert restoration point at keyEnd if needed
+        if (!(after == val)) {
+            m_intervals.emplace(keyEnd, std::move(after));
         }
     }
 
